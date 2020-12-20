@@ -70,6 +70,50 @@ Huawei Atlas200 development kit.
 ### Ubuntu environment preparation
 Ubuntu18.04.04 or Ubuntu18.04.05 is required. Install it in a VM (recommended) or dual boot your computer if you do not have it.
 
+### Mind Studio setup
+Install dependencies
+```
+sudo apt-get update && sudo apt-get upgrade
+sudo apt-get install -y gcc g++ make cmake unzip zlib1g zlib1g-dev libsqlite3-dev openssl libssl-dev libffi-dev pciutils net-tools g++-5-aarch64-linux-gnu libblas-dev gfortran libblas3 libopenblas-dev software-properties-common
+```
+Update default python version
+```
+wget https://www.python.org/ftp/python/3.7.5/Python-3.7.5.tgz
+tar -zxvf Python-3.7.5.tgz
+cd Python-3.7.5
+./configure --prefix=/usr/local/python3.7.5 --enable-shared
+make -j8
+sudo make install
+# link new python
+sudo cp /usr/local/python3.7.5/lib/libpython3.7m.so.1.0 /usr/lib
+sudo ln -s /usr/local/python3.7.5/bin/python3 /usr/bin/python3.7
+sudo ln -s /usr/local/python3.7.5/bin/pip3 /usr/bin/pip3.7
+sudo ln -s /usr/local/python3.7.5/bin/python3 /usr/bin/python3.7.5
+sudo ln -s /usr/local/python3.7.5/bin/pip3 /usr/bin/pip3.7.5
+# Install dependencies
+pip3.7.5 install attrs psutil decorator numpy protobuf==3.11.3 scipy sympy cffi grpcio grpcio-tools requests --user
+```
+Get required files (you might need to sign up for an account)
+File | URL
+---- | ---
+Ascend-Toolkit-20.0.RC1-arm64-linux_gcc7.3.0.run | https://www.huaweicloud.com/ascend/resource/Software
+Ascend-Toolkit-20.0.RC1-arm64-linux_gcc7.3.0.run | https://www.huaweicloud.com/ascend/resource/Software
+Ascend-cann-toolkit_20.1.rc1_linux-aarch64.run | https://obs-9be7.obs.cn-east-2.myhuaweicloud.com/turing/resource/cann/V100R020C10/Ascend-cann-toolkit_20.1.rc1_linux-aarch64.run
+Ascend-cann-toolkit_20.1.rc1_linux-x86_64.run | https://obs-9be7.obs.cn-east-2.myhuaweicloud.com/turing/resource/cann/V100R020C10/Ascend-cann-toolkit_20.1.rc1_linux-x86_64.run
+A200dk-npu-driver-20.1.0-ubuntu18.04-aarch64-minirc.tar.gz | https://obs-9be7.obs.cn-east-2.myhuaweicloud.com/turing/resource/atlas200dk/20.1/A200dk-npu-driver-20.1.0-ubuntu18.04-aarch64-minirc.tar.gz
+
+Give required permissions and execute file
+```
+chmod 755 *.run
+./Ascend-cann-toolkit_20.1.rc1_linux-aarch64.run --install
+./Ascend-cann-toolkit_20.1.rc1_linux-x86_64.run --install
+```
+Move the file `A200dk-npu-driver-20.1.0-ubuntu18.04-aarch64-minirc.tar.gz` into `$HOME/Ascend` directory
+```
+cd $HOME/Ascend
+tar -zxvf A200dk-npu-driver-20.1.0-ubuntu18.04-aarch64-minirc.tar.gz
+```
+
 ### SD Card preparation
 Get tools from [here](https://github.com/Huawei-Ascend/tools).
 #### Files Required
@@ -82,7 +126,8 @@ A200dk-npu-driver-20.1.0-ubuntu18.04-aarch64-minirc.tar.gz | https://obs-9be7.ob
 Ascend-cann-minirc_20.1.rc1_ubuntu18.04-aarch64.zip | https://www.huaweicloud.com/ascend/cann-download
 
 #### Make SD Card
-Download files listed above and put them in a directory
+Download files listed above and put them in a directory.
+A SD Card reader is required for this process. If you do not have one, follow instructions [here](https://support.huaweicloud.com/intl/en-us/usermanual-A200dk_3000/atlas200dk_02_0012.html) to place a jumper on the atlas200dk to make it into a SD Card reader.
 ```
 sudo chmod 755 make_sd_card.py make_ubuntu_sd.sh ubuntu-18.04.4-server-arm64.iso # give required previliges to execute file
 sudo python3 make_sd_card.py local /dev/sdb # change /dev/sdb to your sd card location, you can check with fdisk -l
@@ -90,8 +135,4 @@ sudo python3 make_sd_card.py local /dev/sdb # change /dev/sdb to your sd card lo
 In this process, the script will help you install other dependencies, it might prompt you to answer 'y'.
 
 Wait about 10 minutes, `Make SD Card successfully!` means you successfully flashed the ubuntu server OS into the SD card. Plug it into the atlas200dk and you are ready to go.
-
-### Mind Studio setup
-
-
 
