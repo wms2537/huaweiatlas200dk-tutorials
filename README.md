@@ -1,5 +1,31 @@
 # Huawei Atlas200 Development Kit tutorials
 
+- [Huawei Atlas200 Development Kit tutorials](#huawei-atlas200-development-kit-tutorials)
+  - [Introduction](#introduction)
+  - [Peripherals](#peripherals)
+    - [Gigabit Ethernet](#gigabit-ethernet)
+    - [USB Type-C](#usb-type-c)
+    - [MicroSD card slot](#microsd-card-slot)
+    - [MIPI-CSI](#mipi-csi)
+    - [40 pin GPIO](#40-pin-gpio)
+      - [UART](#uart)
+      - [SPI](#spi)
+      - [I2C](#i2c)
+      - [GPIO](#gpio)
+  - [Setup](#setup)
+    - [Prerequisite](#prerequisite)
+    - [Ubuntu environment preparation](#ubuntu-environment-preparation)
+    - [Mind Studio setup](#mind-studio-setup)
+    - [SD Card preparation](#sd-card-preparation)
+      - [Files Required](#files-required)
+      - [Make SD Card](#make-sd-card)
+    - [Connect to Atlas200dk](#connect-to-atlas200dk)
+      - [Connecting through USB](#connecting-through-usb)
+  - [__Projects__](#projects)
+    - [Demo project 1 (ResNet50 Classification)](#demo-project-1-resnet50-classification)
+    - [Demo Project 2 (FFMPEG + Opencv)](#demo-project-2-ffmpeg--opencv)
+
+
 ## Introduction
 The atlas200dk is ARM based, it runs a copy of ubuntu server in it. It is mainly used to accelerate AI tasks, so it is recommended to separate other backend tasks such as administration, database, etc to a separate backend server. Similar to other single board computers (SBC), the atlas200dk boots from a sd card.
 
@@ -8,6 +34,8 @@ The host machine needs Ubuntu1804 because [Mind Studio](https://www.huaweicloud.
 The atlas200dk does not have a wifi or bluetooth interface, so only possible connection is through LAN and type-c USB. Main input power is from the 12v barrel jack. An at least 36W power supply is required.
 
 For more hardware specs, refer [here](https://e.huawei.com/en/products/cloud-computing-dc/atlas/atlas-200/).
+
+Here are the [official forums](https://bbs.huaweicloud.com/forum/forum-726-1.html) for reference.
 
 ## Peripherals
 ### Gigabit Ethernet
@@ -60,7 +88,7 @@ Only I2C_2 can be used, I2C_1 is intra-board interface. Maximum rate is 400kHz.
 As output pins, GPIO0, GPIO1, and GPIO2 must be connected to external pull- up resistors to increase driving capabilities. It is recommended that the value of pull-up resistance is 1–10 kilohm.
 
 ## Setup
-Latest SDK version at the time writing this is 20.1.0
+Latest SDK version at the time writing this is 20.1.0. Setup consists of several steps, mainly software and hardware. For hardware part, we have to flash an SD card with Ubuntu Server 18.04.05 for ARM. For software part, we have to setup some SDks and [MindStudio](https://www.huaweicloud.com/ascend/resources/tools/mindstudio/detail), an IDE with tools to program the atlas200dk.
 
 ### Prerequisite
 A computer/vm with Ubuntu18.04.
@@ -74,7 +102,7 @@ Ubuntu18.04.04 or Ubuntu18.04.05 is required. Install it in a VM (recommended) o
 Install dependencies
 ```
 sudo apt-get update && sudo apt-get upgrade
-sudo apt-get install -y gcc g++ make cmake unzip zlib1g zlib1g-dev libsqlite3-dev openssl libssl-dev libffi-dev pciutils net-tools g++-5-aarch64-linux-gnu libblas-dev gfortran libblas3 libopenblas-dev software-properties-common
+sudo apt-get install -y gcc g++ make cmake unzip zlib1g zlib1g-dev libsqlite3-dev openssl libssl-dev libffi-dev pciutils net-tools g++-5-aarch64-linux-gnu g++-aarch64-linux-gnu libblas-dev gfortran libblas3 libopenblas-dev
 ```
 Update default python version
 ```sh
@@ -93,7 +121,7 @@ sudo ln -s /usr/local/python3.7.5/bin/pip3 /usr/bin/pip3.7.5
 # Install dependencies
 pip3.7.5 install attrs psutil decorator numpy protobuf==3.11.3 scipy sympy cffi grpcio grpcio-tools requests --user
 ```
-Get required files (you might need to sign up for an account), it is recommended to use wget to download these files.
+Get required files , it is recommended to use wget to download these files. Use [here](https://www.huaweicloud.com/ascend/resource/Software) if links are not working
 File | URL
 ---- | ---
 Ascend-cann-toolkit_20.1.rc1_linux-aarch64.run | https://obs-9be7.obs.cn-east-2.myhuaweicloud.com/turing/resource/cann/V100R020C10/Ascend-cann-toolkit_20.1.rc1_linux-aarch64.run
@@ -260,6 +288,7 @@ Then, restart the process with
 ```
 Congratulations, you have completed hardware setup. Now, let's try a demo project.
 
+## __Projects__
 ### Demo project 1 (ResNet50 Classification)
 To start MindStudio, run
 ```sh
@@ -406,3 +435,112 @@ You will get an output similar to this
 [INFO]  end to finalize acl
 ```
 Congratulations, you have completed your first project.
+
+### Demo Project 2 (FFMPEG + Opencv)
+This projects runs ffmpeg and opencv on atlas200dk. To accomplish this, we need to connect the atlas200dk to the internet to download the required packages. Connect your board to your router with a RJ45 cable.
+
+Firstly, ssh into the board. Default password is `Mind@123`
+```sh
+ssh HwHiAiUser@192.168.1.2
+```
+We need to configure netplan on the board, the only text editor on board is vim. Unfortunately, you can't install other text editors before you connect to the internet. If you are totally new to vim, here are a few tips that are enough for you to edit the file:
+* `i` to switch to edit mode
+* `esc` key to exit edit mode and go back to command mode
+* `:wq` to save and exit
+* `:q` to exit. `:q!` to force exit(without saving changes).
+* Note that `!` is a force command.
+* Use arrow keys to navigate around.
+```sh
+su root
+vi /etc/netplan/01-netcfg.yaml
+```
+enable dhcp like below
+```yaml
+network:
+  version: 2
+#  renderer: NetworkManager
+  renderer: networkd
+  ethernets:
+    eth0:
+      dhcp4: yes
+   
+    usb0:
+      dhcp4: no 
+      addresses: [192.168.1.2/24] 
+      gateway4: 192.168.0.1
+```
+and run
+```
+netplan apply
+```
+then, modify /etc/apt/sources.list to the ubuntu-arm sources
+```
+deb http://ports.ubuntu.com/ bionic main restricted universe multiverse
+deb-src http://ports.ubuntu.com/ bionic main restricted universe multiverse
+deb http://ports.ubuntu.com/ bionic-updates main restricted universe multiverse
+deb-src http://ports.ubuntu.com/ bionic-updates main restricted universe multiverse
+deb http://ports.ubuntu.com/ bionic-security main restricted universe multiverse
+deb-src http://ports.ubuntu.com/ bionic-security main restricted universe multiverse
+deb http://ports.ubuntu.com/ bionic-backports main restricted universe multiverse
+deb-src http://ports.ubuntu.com/ bionic-backports main restricted universe multiverse
+deb http://ports.ubuntu.com/ubuntu-ports/ bionic main universe restricted
+deb-src http://ports.ubuntu.com/ubuntu-ports/ bionic main universe restricted
+```
+then, install dependencies
+```sh
+apt-get update
+apt-get install build-essential libgtk2.0-dev libavcodec-dev libavformat-dev libjpeg-dev libtiff5-dev libswscale-dev git cmake libswscale-dev python3-setuptools python3-dev python3-pip pkg-config ffmpeg libopencv-dev -y
+pip3 install --upgrade pip
+pip3 install Cython
+pip3 install numpy
+exit
+```
+Create dierctory to store built `.so` files, which we will need in mindstudio to program the atlas200dk afterwards. We need to build these on the atlas200dk because it needs to be built for aarch64, not x86 which our pc probably is. 
+```sh
+mkdir -p /home/HwHiAiUser/ascend_ddk/arm
+```
+Install ffmpeg
+```sh
+cd $HOME
+git clone https://git.ffmpeg.org/ffmpeg.git ffmpeg
+cd ffmpeg
+./configure --enable-shared --enable-pic --enable-static --disable-yasm --prefix=/home/HwHiAiUser/ascend_ddk/arm
+make -j8
+su root
+make install
+echo "/home/HwHiAiUser/ascend_ddk/arm/lib" >> /etc/ld.so.conf.d/ffmpeg.conf # for opencv to locate ffmpeg
+ldconfig
+echo "export PATH=$PATH:/home/HwHiAiUser/ascend_ddk/arm/bin" >> /etc/profile # add ffmpeg to PATH
+source /etc/profile
+cp /home/HwHiAiUser/ascend_ddk/arm/lib/pkgconfig/* /usr/share/pkgconfig # copy package config files
+```
+Install opencv
+```sh
+cd $HOME
+git clone https://github.com/opencv/opencv.git
+git clone https://github.com/opencv/opencv_contrib.git
+cd opencv
+mkdir build
+cd build
+cmake -D BUILD_SHARED_LIBS=ON  -D BUILD_opencv_python3=YES -D BUILD_TESTS=OFF -D CMAKE_BUILD_TYPE=RELEASE -D  CMAKE_INSTALL_PREFIX=/home/HwHiAiUser/ascend_ddk/arm -D WITH_LIBV4L=ON -D OPENCV_EXTRA_MODULES=../../opencv_contrib/modules -D PYTHON3_LIBRARIES=/usr/lib/python3.6/config-3.6m-aarch64-linux-gnu/libpython3.6m.so  -D PYTHON3_NUMPY_INCLUDE_DIRS=/usr/local/lib/python3.6/dist-packages/numpy/core/include -D OPENCV_SKIP_PYTHON_LOADER=ON ..      
+make -j8
+su root
+make install
+cp /home/HwHiAiUser/ascend_ddk/arm/lib/python3.6/dist-packages/cv2.cpython-36m-aarch64-linux-gnu.so /usr/lib/python3/dist-packages
+echo "export LD_LIBRARY_PATH=/home/HwHiAiUser/Ascend/acllib/lib64:/home/HwHiAiUser/ascend_ddk/arm/" >> ~/.bashrc
+source ~/.bashrc
+```
+After this, we need to sync the built libaries to our development environment, MindStudio. In your dev environment, run
+```sh
+mkdir $HOME/ascend_ddk
+scp -r HwHiAiUser@192.168.1.2:/home/HwHiAiUser/ascend_ddk/arm $HOME/ascend_ddk/ # copy files to local dev environment
+cd /usr/lib/aarch64-linux-gnu
+sudo scp -r HwHiAiUser@192.168.1.2:/lib/aarch64-linux-gnu/* ./
+sudo scp -r HwHiAiUser@192.168.1.2:/usr/lib/aarch64-linux-gnu/* ./
+```
+Now, we download the project files from https://www.github.com/ascend/samples. This project is ...
+```sh
+cd $HOME/AscendProjects
+wget https://c7xcode.obs.cn-north-4.myhuaweicloud.com/code_Ascend/colorization.zip
+unzip colorization.zip
+```
