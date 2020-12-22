@@ -24,6 +24,7 @@
   - [__Projects__](#projects)
     - [Demo project 1 (ResNet50 Classification)](#demo-project-1-resnet50-classification)
     - [Demo Project 2 (FFMPEG + Opencv)](#demo-project-2-ffmpeg--opencv)
+    - [Demo Project 3 (Camera)](#demo-project-3-camera)
 
 
 ## Introduction
@@ -102,7 +103,7 @@ Ubuntu18.04.04 or Ubuntu18.04.05 is required. Install it in a VM (recommended) o
 Install dependencies
 ```
 sudo apt-get update && sudo apt-get upgrade
-sudo apt-get install -y gcc g++ make cmake unzip zlib1g zlib1g-dev libsqlite3-dev openssl libssl-dev libffi-dev pciutils net-tools g++-5-aarch64-linux-gnu g++-aarch64-linux-gnu libblas-dev gfortran libblas3 libopenblas-dev
+sudo apt-get install -y git gcc g++ make cmake unzip zlib1g zlib1g-dev libsqlite3-dev openssl libssl-dev libffi-dev pciutils net-tools g++-5-aarch64-linux-gnu g++-aarch64-linux-gnu libblas-dev gfortran libblas3 libopenblas-dev libcanberra-gtk-module
 ```
 Update default python version
 ```sh
@@ -529,8 +530,13 @@ make install
 cp /home/HwHiAiUser/ascend_ddk/arm/lib/python3.6/dist-packages/cv2.cpython-36m-aarch64-linux-gnu.so /usr/lib/python3/dist-packages
 echo "export LD_LIBRARY_PATH=/home/HwHiAiUser/Ascend/acllib/lib64:/home/HwHiAiUser/ascend_ddk/arm/" >> ~/.bashrc
 source ~/.bashrc
+echo "/home/HwHiAiUser/ascend_ddk/arm/lib/libopencv_core.so.4.5
+" >> /etc/ld.so.conf.d/opencv.conf
+ldconfig
 ```
-After this, we need to sync the built libaries to our development environment, MindStudio. In your dev environment, run
+After this, we need to sync the built libaries to our development environment, MindStudio.
+
+In your dev environment, run
 ```sh
 mkdir $HOME/ascend_ddk
 scp -r HwHiAiUser@192.168.1.2:/home/HwHiAiUser/ascend_ddk/arm $HOME/ascend_ddk/ # copy files to local dev environment
@@ -538,9 +544,72 @@ cd /usr/lib/aarch64-linux-gnu
 sudo scp -r HwHiAiUser@192.168.1.2:/lib/aarch64-linux-gnu/* ./
 sudo scp -r HwHiAiUser@192.168.1.2:/usr/lib/aarch64-linux-gnu/* ./
 ```
-Now, we download the project files from https://www.github.com/ascend/samples. This project is ...
+Now, we download the project files from https://www.github.com/ascend/samples. This project utilises a CNN to turn grayscale images into coloured LAB images, then it is converted into RGB format.
 ```sh
 cd $HOME/AscendProjects
 wget https://c7xcode.obs.cn-north-4.myhuaweicloud.com/code_Ascend/colorization.zip
 unzip colorization.zip
+```
+Get models
+```sh
+mkdir -p $HOME/AscendProjects/colorization/caffe_model
+cd $HOME/AscendProjects/colorization/caffe_model
+wget https://obs-model-ascend.obs.cn-east-2.myhuaweicloud.com/colorization/colorization.caffemodel
+wget https://obs-model-ascend.obs.cn-east-2.myhuaweicloud.com/colorization/colorization.prototxt
+```
+Open MindStudio with
+```sh
+sh $HOME/MindStudio-ubuntu/bin/MindStudio.sh
+```
+Select `File -> Open` on the top menu bar. Open the courization project. The first time you import the project, a window will popup to confirm the project settings.
+
+Then, we convert the caffe models downloaded to `.om` format with the model converter. The process is same as the previous sample. The data type this time is FP32.
+
+After converting model, load the model into your project. This process is also same as previous project.
+
+Due to some bugs, we have to modify the main.cpp. Comment out these lines
+```cpp
+//    if((argc < 2) || (argv[1] == nullptr)){
+//        ERROR_LOG("Please input: ./main <image_dir>");
+//        return FAILED;
+//    }
+```
+and change the line
+```cpp
+string inputImageDir = string(argv[1]);
+```
+to
+```cpp
+string inputImageDir = "../data";
+```
+
+Then, build the project. This is also same as previous project. Remember to set the target architecture to `aarch64`.
+
+After build success, connect your board with device manager and run it. As we have set up LAN connection just now, we can connect to the board through LAN. Log into your router to find out what IP is assigned to the board. The  idendifier of the board is `davinci-mini`.
+
+In the device manager, you just need to change the ip to your board's ip and connect. Click refresh to see changes reflected on screen.
+
+Then, run the output image can be found in `output` directory in the `out` directory where the compiled binary is located.
+
+### Demo Project 3 (Camera)
+Get code
+```sh
+git clone https://github.com/Atlas200dk/sample-ascendcamera.git
+```
+then open it with mindstudio.
+
+in the .project file, change 
+```
+"ddk_version": "1.32.0.B080"
+```
+to
+```
+"adk_version": "1.75.22.0.220"
+```
+
+Before running this sample, we need to set up a few environment variables.
+```sh
+sudo echo "export DDK_HOME=$HOME/ascend_ddk" >> ~/.bashrc
+sudo echo "export LD_LIBRARY_PATH=$HOME/ascend_ddk/arm/lib" >> ~/.bashrc
+source ~/.bashrc
 ```
