@@ -24,7 +24,7 @@
   - [__Projects__](#projects)
     - [Demo project 1 (ResNet50 Classification)](#demo-project-1-resnet50-classification)
     - [Demo Project 2 (FFMPEG + Opencv)](#demo-project-2-ffmpeg--opencv)
-    - [Demo Project 3 (Camera)](#demo-project-3-camera)
+    - [Demo Project 3 (Face Detection)](#demo-project-3-face-detection)
 
 
 ## Introduction
@@ -591,25 +591,82 @@ In the device manager, you just need to change the ip to your board's ip and con
 
 Then, run the output image can be found in `output` directory in the `out` directory where the compiled binary is located.
 
-### Demo Project 3 (Camera)
+### Demo Project 3 (Face Detection)
 Get code
 ```sh
-git clone https://github.com/Atlas200dk/sample-ascendcamera.git
+wget https://c7xcode.obs.cn-north-4.myhuaweicloud.com/code\_Ascend/facedetection.zip
+unzip facedetection.zip
 ```
 then open it with mindstudio.
 
-in the .project file, change 
+Get models
+```sh
+cd facedetection
+mkdir caffemodel && cd caffemodel
+wget https://c7xcode.obs.cn-north-4.myhuaweicloud.com/models/face\_detection/face\_detection.caffemodel
+wget https://c7xcode.obs.cn-north-4.myhuaweicloud.com/models/face\_detection/face\_detection.prototxt
 ```
-"ddk_version": "1.32.0.B080"
+in the .workspace file, change the hostip to the ip of your board 
+```xml
+<configuration default="true" type="Ascend App Configuration Type" factoryName="Ascend App" hostip="192.168.0.197" commandArguments="" debugPort="">
+  <method v="2" />
+</configuration>
+<configuration name="facedetection" type="Ascend App Configuration Type" factoryName="Ascend App" hostip="192.168.0.197" commandArguments="" debugPort="">
+    <method v="2" />
+</configuration>
 ```
-to
-```
-"adk_version": "1.75.22.0.220"
+Convert models and add models as previous examples.
+
+In this sample, we will need a presenter server to receive the camera stream. It is a websockets server served in the ubuntu environment.
+
+Install presenter server.
+```sh
+#Download files
+cd $HOME
+wget https://c7xcode.obs.cn-north-4.myhuaweicloud.com/presenteragent/presenteragent.zip --no-check-certificate
+unzip presenteragent.zip
+# Download dependencies
+sudo apt-get install autoconf automake libtool python3-pip
+python3 -m pip install pip --user
+python3 -m pip install --upgrade pip --user
+python3 -m pip install tornado==5.1.0 protobuf==3.5.1 numpy==1.14.2 --user
+python3.7.5 -m pip install tornado==5.1.0 --user
+# Install protobuf, note that this version is REQUIRED. We compile two times, one for your dev environment, one for the atlas200.
+git clone -b 3.8.x https://github.com/protocolbuffers/protobuf.git
+cd protobuf
+./autogen.sh
+bash configure
+make -j8
+sudo make install
+make distclean
+./configure --build=x86_64-linux-gnu --host=aarch64-linux-gnu --with-protoc=protoc
+make -j8
+sudo make install
+sudo ldconfig
+# set environment variables
+export DDK_PATH=$HOME/Ascend/ascend-toolkit/20.1.rc1/acllib_linux.aarch64
+# Install Presenter Agent.
+cd $HOME/presenteragent/
+make -j8
+make install
+# Upload the compiled .so file to the Atlas 200 DK (replace the ip with your board ip).
+scp $HOME/ascend_ddk/arm/lib/libpresenteragent.so HwHiAiUser@192.168.1.2:/home/HwHiAiUser
+ssh HwHiAiUser@192.168.1.2
+cp /home/HwHiAiUser/libpresenteragent.so /home/HwHiAiUser/ascend_ddk/arm/lib
 ```
 
-Before running this sample, we need to set up a few environment variables.
+Change the values of `presenter_server_ip` and `presenter_view_ip` in `data/param.conf` to the IP address of your dev environment, and change the value of `presenter_agent_ip` to the IP address of the atlas200dk.
+
+Build as if in the previous examples.
+
+Start a terminal in the project directory, you can use the built in terminal in MindStudio. Then start the presenter server with
 ```sh
-sudo echo "export DDK_HOME=$HOME/ascend_ddk" >> ~/.bashrc
-sudo echo "export LD_LIBRARY_PATH=$HOME/ascend_ddk/arm/lib" >> ~/.bashrc
-source ~/.bashrc
+bash script/run_presenter_server.sh
 ```
+You will see a line `Please visit <url> for face detection`. Go to that url in your browser to see the presenter UI.
+
+Run the built file like previous projects.
+
+In the presenter agent UI, click the `person` under `View Name` to see the camera stream.
+
+Congratulations, you have completed another sample.
